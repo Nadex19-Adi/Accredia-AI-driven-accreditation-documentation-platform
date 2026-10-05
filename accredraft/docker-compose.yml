@@ -1,0 +1,68 @@
+# Optional infrastructure for a production-shaped deployment.
+#
+# The app runs with zero setup using SQLite + local disk (see README).
+# Start these only when you want PostgreSQL, a durable job queue, or S3 storage:
+#
+#   docker compose up -d
+#
+# Then set in backend/.env:
+#   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/accredraft
+#   REDIS_URL=redis://localhost:6379/0
+#   S3_ENDPOINT=http://localhost:9000
+#
+# Note: PostgreSQL additionally needs the driver:
+#   .venv\Scripts\python.exe -m pip install -r requirements-postgres.txt
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: accredraft-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: accredraft
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: accredraft-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: accredraft-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

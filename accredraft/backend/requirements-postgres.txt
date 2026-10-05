@@ -1,0 +1,2 @@
+# Install on top of requirements.txt when using PostgreSQL instead of SQLite.
+psycopg2-binary>=2.9
